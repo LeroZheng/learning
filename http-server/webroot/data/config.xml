@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<server>
+    <name>Simple HTTP Server</name>
+    <version>1.0.0</version>
+    <settings>
+        <port>8080</port>
+        <webroot>./webroot</webroot>
+        <threads>4</threads>
+    </settings>
+</server>
