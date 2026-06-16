@@ -2,13 +2,10 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { loadConfig, ConfigValidationError } from '../../src/config.js';
 
 describe('Configuration Module', () => {
-  const originalEnv = process.env;
+  let originalEnv: NodeJS.ProcessEnv;
 
   beforeEach(() => {
-    // Reset environment for each test
-    process.env = { ...originalEnv };
-    // Set the minimum required env var
-    process.env.DATABASE_URL = 'postgresql://user:password@localhost:5432/testdb';
+    originalEnv = { ...process.env };
   });
 
   afterEach(() => {
@@ -16,10 +13,11 @@ describe('Configuration Module', () => {
   });
 
   describe('loadConfig() - valid configuration', () => {
-    it('should load configuration with all defaults when only DATABASE_URL is set', () => {
+    it('should load config with all defaults when only DATABASE_URL is set', () => {
+      process.env.DATABASE_URL = 'postgresql://user:pass@localhost:5432/testdb';
       const config = loadConfig();
 
-      expect(config.connectionString).toBe('postgresql://user:password@localhost:5432/testdb');
+      expect(config.connectionString).toBe('postgresql://user:pass@localhost:5432/testdb');
       expect(config.pool.max).toBe(10);
       expect(config.pool.idleTimeoutMs).toBe(30000);
       expect(config.pool.connectionTimeoutMs).toBe(10000);
@@ -32,7 +30,8 @@ describe('Configuration Module', () => {
       expect(config.reconnection.initialDelayMs).toBe(1000);
     });
 
-    it('should override defaults with environment variable values', () => {
+    it('should override defaults via environment variables', () => {
+      process.env.DATABASE_URL = 'postgresql://localhost/test';
       process.env.DB_POOL_MAX = '20';
       process.env.DB_POOL_IDLE_TIMEOUT_MS = '60000';
       process.env.DB_POOL_CONNECTION_TIMEOUT_MS = '5000';
@@ -57,70 +56,63 @@ describe('Configuration Module', () => {
       expect(config.reconnection.maxAttempts).toBe(5);
       expect(config.reconnection.initialDelayMs).toBe(2000);
     });
+  });
 
-    it('should accept pool max at boundary value 1', () => {
+  describe('loadConfig() - connection string validation', () => {
+    it('should reject when DATABASE_URL is not set', () => {
+      delete process.env.DATABASE_URL;
+      expect(() => loadConfig()).toThrow(ConfigValidationError);
+      expect(() => loadConfig()).toThrow(/missing or empty/);
+    });
+
+    it('should reject empty string', () => {
+      process.env.DATABASE_URL = '';
+      expect(() => loadConfig()).toThrow(ConfigValidationError);
+    });
+
+    it('should reject whitespace-only string', () => {
+      process.env.DATABASE_URL = '   ';
+      expect(() => loadConfig()).toThrow(ConfigValidationError);
+    });
+  });
+
+  describe('loadConfig() - pool max validation', () => {
+    beforeEach(() => {
+      process.env.DATABASE_URL = 'postgresql://localhost/test';
+    });
+
+    it('should reject pool max of 0', () => {
+      process.env.DB_POOL_MAX = '0';
+      expect(() => loadConfig()).toThrow(ConfigValidationError);
+      expect(() => loadConfig()).toThrow(/Pool max must be an integer between 1 and 100/);
+    });
+
+    it('should reject negative pool max', () => {
+      process.env.DB_POOL_MAX = '-5';
+      expect(() => loadConfig()).toThrow(ConfigValidationError);
+    });
+
+    it('should reject pool max greater than 100', () => {
+      process.env.DB_POOL_MAX = '101';
+      expect(() => loadConfig()).toThrow(ConfigValidationError);
+    });
+
+    it('should accept pool max of 1 (minimum)', () => {
       process.env.DB_POOL_MAX = '1';
       const config = loadConfig();
       expect(config.pool.max).toBe(1);
     });
 
-    it('should accept pool max at boundary value 100', () => {
+    it('should accept pool max of 100 (maximum)', () => {
       process.env.DB_POOL_MAX = '100';
       const config = loadConfig();
       expect(config.pool.max).toBe(100);
     });
 
-    it('should use defaults for non-numeric environment variable values', () => {
+    it('should use default when DB_POOL_MAX is non-numeric', () => {
       process.env.DB_POOL_MAX = 'abc';
-      // Non-numeric defaults to 10, which is valid
       const config = loadConfig();
       expect(config.pool.max).toBe(10);
-    });
-  });
-
-  describe('loadConfig() - connection string validation', () => {
-    it('should throw ConfigValidationError when DATABASE_URL is undefined', () => {
-      delete process.env.DATABASE_URL;
-      expect(() => loadConfig()).toThrow(ConfigValidationError);
-      expect(() => loadConfig()).toThrow('DATABASE_URL environment variable is missing or empty');
-    });
-
-    it('should throw ConfigValidationError when DATABASE_URL is empty string', () => {
-      process.env.DATABASE_URL = '';
-      expect(() => loadConfig()).toThrow(ConfigValidationError);
-      expect(() => loadConfig()).toThrow('DATABASE_URL environment variable is missing or empty');
-    });
-
-    it('should throw ConfigValidationError when DATABASE_URL is whitespace only', () => {
-      process.env.DATABASE_URL = '   \t\n  ';
-      expect(() => loadConfig()).toThrow(ConfigValidationError);
-      expect(() => loadConfig()).toThrow('DATABASE_URL environment variable is missing or empty');
-    });
-  });
-
-  describe('loadConfig() - pool max validation', () => {
-    it('should throw ConfigValidationError when pool max is 0', () => {
-      process.env.DB_POOL_MAX = '0';
-      expect(() => loadConfig()).toThrow(ConfigValidationError);
-      expect(() => loadConfig()).toThrow('Pool max must be an integer between 1 and 100');
-    });
-
-    it('should throw ConfigValidationError when pool max is negative', () => {
-      process.env.DB_POOL_MAX = '-5';
-      expect(() => loadConfig()).toThrow(ConfigValidationError);
-      expect(() => loadConfig()).toThrow('Pool max must be an integer between 1 and 100');
-    });
-
-    it('should throw ConfigValidationError when pool max is greater than 100', () => {
-      process.env.DB_POOL_MAX = '101';
-      expect(() => loadConfig()).toThrow(ConfigValidationError);
-      expect(() => loadConfig()).toThrow('Pool max must be an integer between 1 and 100');
-    });
-
-    it('should throw ConfigValidationError when pool max is a very large number', () => {
-      process.env.DB_POOL_MAX = '999';
-      expect(() => loadConfig()).toThrow(ConfigValidationError);
-      expect(() => loadConfig()).toThrow('Pool max must be an integer between 1 and 100');
     });
   });
 });

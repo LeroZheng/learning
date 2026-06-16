@@ -1,4 +1,8 @@
-import 'dotenv/config';
+/**
+ * Note: In production, environment variables should be set by the runtime.
+ * For local development, use `dotenv` by importing 'dotenv/config' before this module
+ * or call `dotenv.config()` in your application entry point.
+ */
 
 /**
  * Database configuration interface.
