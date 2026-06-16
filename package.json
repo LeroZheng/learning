@@ -1,0 +1,30 @@
+{
+  "name": "database-crud",
+  "version": "1.0.0",
+  "description": "Learning-focused database CRUD module with TypeScript, PostgreSQL, and Prisma ORM",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "test:unit": "vitest run tests/unit",
+    "test:properties": "vitest run tests/properties",
+    "test:integration": "vitest run tests/integration",
+    "test:watch": "vitest",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev"
+  },
+  "dependencies": {
+    "pg": "^8.13.0",
+    "@prisma/client": "^6.9.0",
+    "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0",
+    "vitest": "^3.1.0",
+    "fast-check": "^4.0.0",
+    "prisma": "^6.9.0",
+    "@types/pg": "^8.11.10",
+    "@types/node": "^22.10.0"
+  }
+}
